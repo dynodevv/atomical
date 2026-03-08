@@ -154,6 +154,26 @@ void hal_mmu_invalidate_page(uintptr_t virt)
     invlpg(virt);
 }
 
+/* --- Context Initialization --- */
+
+extern void task_entry_trampoline(void);
+
+void hal_context_init(cpu_context_t *ctx, void *stack_top, void (*entry)(void *), void *arg)
+{
+    memset(ctx, 0, sizeof(cpu_context_t));
+
+    /*
+     * Set up the context so hal_context_switch will jump to the
+     * task_entry_trampoline, which reads entry and arg from r12/r13.
+     * See entry.S for the trampoline implementation.
+     */
+    ctx->r12 = (uint64_t)entry;             /* Callee-saved: entry function */
+    ctx->r13 = (uint64_t)arg;               /* Callee-saved: argument */
+    ctx->rsp = (uint64_t)stack_top;          /* Stack pointer (16-byte aligned) */
+    ctx->rip = (uint64_t)task_entry_trampoline;  /* Start address */
+    ctx->rbp = 0;                            /* Frame pointer */
+}
+
 /* CPU HAL functions */
 
 void hal_cpu_halt(void)

@@ -8,22 +8,32 @@
 
 #include <kernel/types.h>
 
-/* --- CPU Registers --- */
+/* --- CPU Context (matches hal_context_switch layout in entry.S) --- */
 
 typedef struct cpu_context {
-    uint64_t r15, r14, r13, r12;
-    uint64_t r11, r10, r9, r8;
-    uint64_t rbp, rdi, rsi, rdx, rcx, rbx, rax;
-    uint64_t rip, cs, rflags, rsp, ss;
+    uint64_t r15;   /* offset  0 */
+    uint64_t r14;   /* offset  8 */
+    uint64_t r13;   /* offset 16 */
+    uint64_t r12;   /* offset 24 */
+    uint64_t rbp;   /* offset 32 */
+    uint64_t rbx;   /* offset 40 */
+    uint64_t rsp;   /* offset 48 */
+    uint64_t rip;   /* offset 56 */
 } cpu_context_t;
 
-/* --- GDT --- */
+/* --- GDT selectors (Limine bootloader GDT layout) ---
+ *  0x00  Null
+ *  0x08  16-bit code
+ *  0x10  16-bit data
+ *  0x18  32-bit code
+ *  0x20  32-bit data
+ *  0x28  64-bit code  (kernel)
+ *  0x30  64-bit data  (kernel)
+ * User-mode and TSS segments require loading a custom GDT.
+ */
 
-#define GDT_KERNEL_CODE  0x08
-#define GDT_KERNEL_DATA  0x10
-#define GDT_USER_CODE    0x18
-#define GDT_USER_DATA    0x20
-#define GDT_TSS          0x28
+#define GDT_KERNEL_CODE  0x28
+#define GDT_KERNEL_DATA  0x30
 
 typedef struct PACKED gdt_entry {
     uint16_t limit_low;

@@ -65,8 +65,12 @@ COMMON_C_SRCS := \
     kernel/lib/klib.c \
     kernel/mm/pmm.c \
     kernel/mm/heap.c \
+    kernel/sched/sched.c \
+    kernel/test/ktest.c \
     fs/vfs/vfs.c \
-    fs/ramfs/ramfs.c
+    fs/ramfs/ramfs.c \
+    drivers/display/fbconsole.c \
+    drivers/input/keyboard.c
 
 # Architecture-specific sources
 ifeq ($(ARCH),x86_64)

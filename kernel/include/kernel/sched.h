@@ -8,6 +8,7 @@
 
 #include <kernel/types.h>
 #include <kernel/mm.h>
+#include <arch.h>
 #include <hal/hal.h>
 
 /* Process states */

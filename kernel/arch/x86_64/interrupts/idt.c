@@ -164,10 +164,6 @@ void x86_64_exception_handler(interrupt_frame_t *frame)
 /* PIC remapping: move IRQs 0-15 to vectors 32-47 */
 static void pic_remap(void)
 {
-    /* Save masks */
-    uint8_t mask1 = inb(0x21);
-    uint8_t mask2 = inb(0xA1);
-
     /* ICW1: begin initialization in cascade mode */
     outb(0x20, 0x11);
     io_wait();
@@ -192,9 +188,9 @@ static void pic_remap(void)
     outb(0xA1, 0x01);
     io_wait();
 
-    /* Restore masks */
-    outb(0x21, mask1);
-    outb(0xA1, mask2);
+    /* Mask all IRQs; drivers unmask individually when they register */
+    outb(0x21, 0xFF);
+    outb(0xA1, 0xFF);
 }
 
 /* HAL interrupt functions */
@@ -246,4 +242,18 @@ void hal_irq_ack(uint32_t irq)
     if (irq >= 8)
         outb(0xA0, 0x20);
     outb(0x20, 0x20);
+}
+
+void hal_irq_unmask(uint32_t irq)
+{
+    uint16_t port = (irq < 8) ? 0x21 : 0xA1;
+    uint8_t  bit  = (uint8_t)(irq & 7);
+    outb(port, inb(port) & ~(1 << bit));
+}
+
+void hal_irq_mask(uint32_t irq)
+{
+    uint16_t port = (irq < 8) ? 0x21 : 0xA1;
+    uint8_t  bit  = (uint8_t)(irq & 7);
+    outb(port, inb(port) | (1 << bit));
 }

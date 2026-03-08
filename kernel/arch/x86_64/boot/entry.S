@@ -149,6 +149,24 @@ ISR_NOERR 46
 ISR_NOERR 47
 
 /*
+ * Task entry trampoline: called when a newly created task starts executing.
+ * After hal_context_switch restores the saved context, r12 = entry function
+ * and r13 = argument (set up by hal_context_init).
+ */
+.global task_entry_trampoline
+task_entry_trampoline:
+    mov %r13, %rdi          /* arg -> first parameter (rdi) */
+    call *%r12              /* call entry(arg) */
+    /* If entry returns, call sched_exit(0) */
+    xor %edi, %edi
+    call sched_exit
+    /* Should never reach here */
+.Ltrap_hang:
+    cli
+    hlt
+    jmp .Ltrap_hang
+
+/*
  * Context switch: hal_context_switch(old_ctx, new_ctx)
  * %rdi = old_ctx, %rsi = new_ctx
  */
@@ -182,6 +200,9 @@ hal_context_switch:
 /*
  * Enter userspace: hal_userspace_enter(entry, user_stack, arg)
  * Uses iretq to transition to Ring 3.
+ * TODO: The selectors below require a custom GDT with user-mode segments.
+ *       Limine's GDT only has kernel segments.  A gdt_init() that installs
+ *       user code/data descriptors must be called before using this function.
  */
 .global hal_userspace_enter
 hal_userspace_enter:

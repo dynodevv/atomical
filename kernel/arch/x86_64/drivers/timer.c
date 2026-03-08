@@ -33,6 +33,9 @@ void hal_timer_init(uint32_t frequency_hz)
 
     hal_irq_register(0, timer_irq_handler, NULL);
 
+    /* Unmask IRQ0 on the PIC so timer interrupts are delivered */
+    hal_irq_unmask(0);
+
     kprintf("[timer] PIT initialized at %u Hz (divisor=%u)\n", frequency_hz, divisor);
 }
 

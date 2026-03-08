@@ -5,6 +5,7 @@
 
 #include <kernel/kernel.h>
 #include <kernel/mm.h>
+#include <kernel/sched.h>
 #include <arch/arm64/arch.h>
 #include <hal/hal.h>
 
@@ -143,6 +144,31 @@ uintptr_t hal_mmu_virt_to_phys(page_table_t *pgd, uintptr_t virt)
 void hal_mmu_invalidate_page(uintptr_t virt)
 {
     arm64_tlbi_va(virt);
+}
+
+/* --- Context Initialization (ARM64 stub) --- */
+
+/* ARM64 task trampoline — called when a new task starts executing */
+static void arm64_task_trampoline(void)
+{
+    /* On ARM64 context switch, x19-x28 are callee-saved and restored.
+     * We use x19 = entry, x20 = arg (set by hal_context_init). */
+    void (*entry)(void *);
+    void *arg;
+    __asm__ volatile("mov %0, x19" : "=r"(entry));
+    __asm__ volatile("mov %0, x20" : "=r"(arg));
+    entry(arg);
+    sched_exit(0);
+    for (;;) __asm__ volatile("wfi");
+}
+
+void hal_context_init(cpu_context_t *ctx, void *stack_top, void (*entry)(void *), void *arg)
+{
+    memset(ctx, 0, sizeof(cpu_context_t));
+    ctx->x19 = (uint64_t)entry;
+    ctx->x20 = (uint64_t)arg;
+    ctx->sp   = (uint64_t)stack_top;
+    ctx->lr   = (uint64_t)arm64_task_trampoline;
 }
 
 /* CPU HAL functions */

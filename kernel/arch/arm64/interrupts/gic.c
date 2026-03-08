@@ -170,3 +170,13 @@ void hal_irq_ack(uint32_t irq)
 {
     gicv3_send_eoi(irq);
 }
+
+void hal_irq_unmask(uint32_t irq)
+{
+    gicv3_enable_irq(irq);
+}
+
+void hal_irq_mask(uint32_t irq)
+{
+    gicv3_disable_irq(irq);
+}

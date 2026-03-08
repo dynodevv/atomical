@@ -44,6 +44,9 @@ void vfs_init(void)
 
     vfs_root->inode = root_inode;
 
+    /* Initialize RamFS and mount it at root */
+    ramfs_init();
+
     kprintf("[vfs]  Root filesystem initialized\n");
 }
 
@@ -91,30 +94,72 @@ int vfs_mount(const char *source, const char *target, const char *fstype, const 
     return 0;
 }
 
+/*
+ * Find the best-matching mount point for a path and return the
+ * remaining path suffix after the mount point.
+ */
+static struct superblock *find_mount(const char *path, const char **remaining)
+{
+    int best = -1;
+    size_t best_len = 0;
+
+    for (int i = 0; i < mount_count; i++) {
+        size_t mlen = strlen(mount_table[i].path);
+        if (strncmp(path, mount_table[i].path, mlen) == 0) {
+            /* Ensure exact prefix: path continues with '/' or ends */
+            if (mlen > best_len &&
+                (path[mlen] == '/' || path[mlen] == '\0' || mlen == 1)) {
+                best = i;
+                best_len = mlen;
+            }
+        }
+    }
+
+    if (best >= 0) {
+        const char *rest = path + best_len;
+        /* Skip leading slash in remainder */
+        while (*rest == '/')
+            rest++;
+        *remaining = rest;
+        return mount_table[best].sb;
+    }
+    return NULL;
+}
+
 /* Path resolution: walk from root following path components */
 struct dentry *vfs_lookup(const char *path)
 {
     if (!path || path[0] != '/')
         return NULL;
 
-    struct dentry *current = vfs_root;
+    /* Check if this path falls within a mount point */
+    const char *remaining = NULL;
+    struct superblock *sb = find_mount(path, &remaining);
 
-    /* Skip leading slash */
-    path++;
+    struct dentry *current;
+    const char *walk;
 
-    while (*path) {
+    if (sb && sb->root) {
+        current = sb->root;
+        walk = remaining;
+    } else {
+        current = vfs_root;
+        walk = path + 1;  /* skip leading '/' */
+    }
+
+    while (*walk) {
         /* Skip multiple slashes */
-        while (*path == '/')
-            path++;
+        while (*walk == '/')
+            walk++;
 
-        if (*path == '\0')
+        if (*walk == '\0')
             break;
 
         /* Extract next path component */
         char component[VFS_NAME_MAX + 1];
         int i = 0;
-        while (*path && *path != '/' && i < VFS_NAME_MAX) {
-            component[i++] = *path++;
+        while (*walk && *walk != '/' && i < VFS_NAME_MAX) {
+            component[i++] = *walk++;
         }
         component[i] = '\0';
 
@@ -133,14 +178,74 @@ struct dentry *vfs_lookup(const char *path)
     return current;
 }
 
+/*
+ * Split a path into parent directory path and the final name component.
+ * Returns 0 on success.
+ */
+static int vfs_split_path(const char *path, char *parent_path, size_t parent_size,
+                           char *name, size_t name_size)
+{
+    if (!path || path[0] != '/')
+        return -1;
+
+    size_t len = strlen(path);
+
+    /* Find the last '/' */
+    int last_slash = -1;
+    for (size_t i = 0; i < len; i++) {
+        if (path[i] == '/')
+            last_slash = (int)i;
+    }
+
+    if (last_slash < 0)
+        return -1;
+
+    /* Extract name (after last slash) */
+    const char *name_start = path + last_slash + 1;
+    if (*name_start == '\0')
+        return -1;  /* Path ends with '/' */
+
+    strncpy(name, name_start, name_size - 1);
+    name[name_size - 1] = '\0';
+
+    /* Extract parent path */
+    if (last_slash == 0) {
+        /* Parent is root */
+        parent_path[0] = '/';
+        parent_path[1] = '\0';
+    } else {
+        size_t plen = (size_t)last_slash;
+        if (plen >= parent_size) plen = parent_size - 1;
+        memcpy(parent_path, path, plen);
+        parent_path[plen] = '\0';
+    }
+
+    return 0;
+}
+
 struct file *vfs_open(const char *path, uint32_t flags, mode_t mode)
 {
     struct dentry *dentry = vfs_lookup(path);
 
     if (!dentry && (flags & O_CREAT)) {
-        /* TODO: Create the file using mode */
-        (void)mode;
-        return NULL;
+        /* Try to create the file */
+        char parent_path[VFS_PATH_MAX];
+        char name[VFS_NAME_MAX + 1];
+        if (vfs_split_path(path, parent_path, sizeof(parent_path),
+                           name, sizeof(name)) != 0)
+            return NULL;
+
+        struct dentry *parent = vfs_lookup(parent_path);
+        if (!parent || !parent->inode || !parent->inode->i_ops ||
+            !parent->inode->i_ops->create)
+            return NULL;
+
+        if (parent->inode->i_ops->create(parent->inode, name, mode) != 0)
+            return NULL;
+
+        dentry = vfs_lookup(path);
+        if (!dentry)
+            return NULL;
     }
 
     if (!dentry)
@@ -227,10 +332,19 @@ off_t vfs_seek(struct file *file, off_t offset, int whence)
 
 int vfs_mkdir(const char *path, mode_t mode)
 {
-    (void)path;
-    (void)mode;
-    /* TODO: Implement */
-    return -1;
+    char parent_path[VFS_PATH_MAX];
+    char name[VFS_NAME_MAX + 1];
+
+    if (vfs_split_path(path, parent_path, sizeof(parent_path),
+                       name, sizeof(name)) != 0)
+        return -1;
+
+    struct dentry *parent = vfs_lookup(parent_path);
+    if (!parent || !parent->inode || !parent->inode->i_ops ||
+        !parent->inode->i_ops->mkdir)
+        return -1;
+
+    return parent->inode->i_ops->mkdir(parent->inode, name, mode);
 }
 
 int vfs_rmdir(const char *path)
@@ -242,9 +356,19 @@ int vfs_rmdir(const char *path)
 
 int vfs_unlink(const char *path)
 {
-    (void)path;
-    /* TODO: Implement */
-    return -1;
+    char parent_path[VFS_PATH_MAX];
+    char name[VFS_NAME_MAX + 1];
+
+    if (vfs_split_path(path, parent_path, sizeof(parent_path),
+                       name, sizeof(name)) != 0)
+        return -1;
+
+    struct dentry *parent = vfs_lookup(parent_path);
+    if (!parent || !parent->inode || !parent->inode->i_ops ||
+        !parent->inode->i_ops->unlink)
+        return -1;
+
+    return parent->inode->i_ops->unlink(parent->inode, name);
 }
 
 int vfs_unmount(const char *target)
@@ -252,4 +376,12 @@ int vfs_unmount(const char *target)
     (void)target;
     /* TODO: Implement */
     return -1;
+}
+
+struct dentry *vfs_get_children(const char *path)
+{
+    struct dentry *dentry = vfs_lookup(path);
+    if (!dentry)
+        return NULL;
+    return dentry->children;
 }
