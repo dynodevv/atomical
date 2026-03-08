@@ -152,4 +152,10 @@ int          vfs_unlink(const char *path);
 /* Path resolution */
 struct dentry *vfs_lookup(const char *path);
 
+/* Directory listing */
+struct dentry *vfs_get_children(const char *path);
+
+/* RamFS init */
+void ramfs_init(void);
+
 #endif /* _KERNEL_VFS_H */

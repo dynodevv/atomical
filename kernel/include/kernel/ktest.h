@@ -18,4 +18,12 @@ typedef struct {
 /* Run all kernel self-tests and return results */
 ktest_results_t ktest_run_all(void);
 
+/* Run individual test suites */
+ktest_results_t ktest_run_strings(void);
+ktest_results_t ktest_run_heap(void);
+ktest_results_t ktest_run_pmm(void);
+ktest_results_t ktest_run_timer(void);
+ktest_results_t ktest_run_sched(void);
+ktest_results_t ktest_run_vfs(void);
+
 #endif /* _KERNEL_KTEST_H */

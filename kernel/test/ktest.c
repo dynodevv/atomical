@@ -225,6 +225,9 @@ static void test_scheduler(void)
     test_assert(current->pid == 0, "sched", "idle task is PID 0");
 
     /* Create test tasks */
+    task_a_ran = 0;
+    task_b_ran = 0;
+
     task_t *ta = sched_create_task("test_a", test_task_a, NULL, 1);
     test_assert(ta != NULL, "sched_create_task", "created task A");
     test_assert(ta->pid > 0, "sched_create_task", "task A has valid PID");
@@ -241,6 +244,97 @@ static void test_scheduler(void)
     /* Check if tasks ran */
     test_assert(task_a_ran == 1, "schedule", "task A executed");
     test_assert(task_b_ran == 1, "schedule", "task B executed");
+}
+
+/* --- VFS / RamFS tests --- */
+
+static void test_vfs(void)
+{
+    kprintf("\n--- VFS / RamFS ---\n");
+
+    /* Test: Mount RamFS */
+    int rc = vfs_mount("none", "/tmp", "ramfs", NULL);
+    test_assert(rc == 0, "vfs_mount", "mount ramfs on /tmp");
+
+    /* Test: Lookup mounted root */
+    struct dentry *tmp = vfs_lookup("/tmp");
+    test_assert(tmp != NULL, "vfs_lookup", "find /tmp dentry");
+    test_assert(tmp->inode != NULL, "vfs_lookup", "/tmp has inode");
+    test_assert(tmp->inode->type == VFS_DIRECTORY, "vfs_lookup", "/tmp is directory");
+
+    /* Test: Create directory */
+    rc = vfs_mkdir("/tmp/testdir", 0755);
+    test_assert(rc == 0, "vfs_mkdir", "create /tmp/testdir");
+
+    struct dentry *testdir = vfs_lookup("/tmp/testdir");
+    test_assert(testdir != NULL, "vfs_lookup", "find /tmp/testdir");
+    test_assert(testdir->inode->type == VFS_DIRECTORY, "vfs_lookup", "testdir is directory");
+
+    /* Test: Create and write a file */
+    struct file *f = vfs_open("/tmp/hello.txt", O_CREAT | O_RDWR, 0644);
+    test_assert(f != NULL, "vfs_open", "create /tmp/hello.txt");
+
+    const char *test_data = "Hello, Atomical!";
+    ssize_t written = vfs_write(f, test_data, strlen(test_data));
+    test_assert(written == (ssize_t)strlen(test_data), "vfs_write", "wrote test data");
+
+    vfs_close(f);
+
+    /* Test: Read back the file */
+    f = vfs_open("/tmp/hello.txt", O_RDONLY, 0);
+    test_assert(f != NULL, "vfs_open", "reopen /tmp/hello.txt");
+
+    char readbuf[64];
+    memset(readbuf, 0, sizeof(readbuf));
+    ssize_t nread = vfs_read(f, readbuf, sizeof(readbuf));
+    test_assert(nread == (ssize_t)strlen(test_data), "vfs_read", "read correct length");
+    test_assert(strcmp(readbuf, test_data) == 0, "vfs_read", "data matches written");
+
+    vfs_close(f);
+
+    /* Test: Seek and partial read */
+    f = vfs_open("/tmp/hello.txt", O_RDONLY, 0);
+    test_assert(f != NULL, "vfs_open", "reopen for seek test");
+
+    off_t pos = vfs_seek(f, 7, SEEK_SET);
+    test_assert(pos == 7, "vfs_seek", "seek to offset 7");
+
+    memset(readbuf, 0, sizeof(readbuf));
+    nread = vfs_read(f, readbuf, sizeof(readbuf));
+    test_assert(nread > 0, "vfs_read", "partial read after seek");
+    test_assert(strcmp(readbuf, "Atomical!") == 0, "vfs_read", "partial data correct");
+
+    vfs_close(f);
+
+    /* Test: Unlink a file */
+    rc = vfs_unlink("/tmp/hello.txt");
+    test_assert(rc == 0, "vfs_unlink", "delete /tmp/hello.txt");
+
+    struct dentry *gone = vfs_lookup("/tmp/hello.txt");
+    test_assert(gone == NULL, "vfs_lookup", "deleted file not found");
+
+    /* Test: Nested directory creation */
+    rc = vfs_mkdir("/tmp/testdir/sub", 0755);
+    test_assert(rc == 0, "vfs_mkdir", "create /tmp/testdir/sub");
+
+    struct dentry *sub = vfs_lookup("/tmp/testdir/sub");
+    test_assert(sub != NULL, "vfs_lookup", "find /tmp/testdir/sub");
+
+    /* Test: File inside nested directory */
+    f = vfs_open("/tmp/testdir/sub/data.txt", O_CREAT | O_RDWR, 0644);
+    test_assert(f != NULL, "vfs_open", "create nested file");
+    written = vfs_write(f, "nested", 6);
+    test_assert(written == 6, "vfs_write", "write to nested file");
+    vfs_close(f);
+
+    /* Verify nested file read */
+    f = vfs_open("/tmp/testdir/sub/data.txt", O_RDONLY, 0);
+    test_assert(f != NULL, "vfs_open", "reopen nested file");
+    memset(readbuf, 0, sizeof(readbuf));
+    nread = vfs_read(f, readbuf, sizeof(readbuf));
+    test_assert(nread == 6, "vfs_read", "nested read length");
+    test_assert(strcmp(readbuf, "nested") == 0, "vfs_read", "nested data matches");
+    vfs_close(f);
 }
 
 /* --- Run all tests --- */
@@ -261,6 +355,7 @@ ktest_results_t ktest_run_all(void)
     test_pmm();
     test_timer();
     test_scheduler();
+    test_vfs();
 
     kprintf("\n============================================\n");
     kprintf("  Results: %d/%d passed, %d failed\n",
@@ -274,4 +369,60 @@ ktest_results_t ktest_run_all(void)
     };
 
     return results;
+}
+
+/* --- Individual test suites (for shell commands) --- */
+
+ktest_results_t ktest_run_strings(void)
+{
+    test_pass_count = 0;
+    test_fail_count = 0;
+    test_total_count = 0;
+    test_strings();
+    return (ktest_results_t){ test_total_count, test_pass_count, test_fail_count };
+}
+
+ktest_results_t ktest_run_heap(void)
+{
+    test_pass_count = 0;
+    test_fail_count = 0;
+    test_total_count = 0;
+    test_heap();
+    return (ktest_results_t){ test_total_count, test_pass_count, test_fail_count };
+}
+
+ktest_results_t ktest_run_pmm(void)
+{
+    test_pass_count = 0;
+    test_fail_count = 0;
+    test_total_count = 0;
+    test_pmm();
+    return (ktest_results_t){ test_total_count, test_pass_count, test_fail_count };
+}
+
+ktest_results_t ktest_run_timer(void)
+{
+    test_pass_count = 0;
+    test_fail_count = 0;
+    test_total_count = 0;
+    test_timer();
+    return (ktest_results_t){ test_total_count, test_pass_count, test_fail_count };
+}
+
+ktest_results_t ktest_run_sched(void)
+{
+    test_pass_count = 0;
+    test_fail_count = 0;
+    test_total_count = 0;
+    test_scheduler();
+    return (ktest_results_t){ test_total_count, test_pass_count, test_fail_count };
+}
+
+ktest_results_t ktest_run_vfs(void)
+{
+    test_pass_count = 0;
+    test_fail_count = 0;
+    test_total_count = 0;
+    test_vfs();
+    return (ktest_results_t){ test_total_count, test_pass_count, test_fail_count };
 }
