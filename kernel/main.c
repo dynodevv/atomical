@@ -466,9 +466,13 @@ static void cmd_kill(int argc, char *argv[])
         return;
     }
 
-    /* Simple atoi */
+    /* Parse PID from argument */
     int pid = 0;
     const char *s = argv[1];
+    if (*s < '0' || *s > '9') {
+        kprintf("kill: invalid PID '%s'\n", argv[1]);
+        return;
+    }
     while (*s >= '0' && *s <= '9') {
         pid = pid * 10 + (*s - '0');
         s++;
@@ -646,6 +650,8 @@ static void cmd_color(int argc, char *argv[])
     /* Parse hex color */
     const char *hex = argv[1];
     uint32_t color = 0;
+    bool valid = true;
+    int digits = 0;
     for (int i = 0; hex[i] && i < 6; i++) {
         color <<= 4;
         char c = hex[i];
@@ -655,6 +661,16 @@ static void cmd_color(int argc, char *argv[])
             color |= (uint32_t)(c - 'a' + 10);
         else if (c >= 'A' && c <= 'F')
             color |= (uint32_t)(c - 'A' + 10);
+        else {
+            valid = false;
+            break;
+        }
+        digits++;
+    }
+
+    if (!valid || digits != 6) {
+        kprintf("Invalid hex color. Use 6 hex digits (e.g. 00FF00)\n");
+        return;
     }
 
     fbcon_set_color(color, 0x001A1A2E);
