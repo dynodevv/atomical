@@ -8,6 +8,10 @@
 #include <kernel/limine.h>
 #include <kernel/mm.h>
 #include <kernel/vfs.h>
+#include <kernel/sched.h>
+#include <kernel/fbconsole.h>
+#include <kernel/keyboard.h>
+#include <kernel/ktest.h>
 #include <hal/hal.h>
 
 /* --- Limine Requests --- */
@@ -202,21 +206,112 @@ void kmain(void)
     kprintf("[vfs]  Initializing virtual file system...\n");
     vfs_init();
 
-    /* Step 10: SMP initialization */
+    /* Step 10: Initialize framebuffer console for text output */
+    kprintf("[fb]   Initializing framebuffer console...\n");
+    if (kernel_fb.bpp == 32) {
+        fbcon_init(&kernel_fb);
+        kprintf("[fb]   Console active: %ux%u chars\n",
+                kernel_fb.width / 8, kernel_fb.height / 16);
+    }
+
+    /* Re-print boot banner now that console is active */
+    kprintf("\n");
+    kprintf("  Atomical OS v%s\n", ATOMICAL_VERSION_STRING);
+    kprintf("  MIT License - Copyright (c) 2026 Dyno\n\n");
+
+    /* Step 11: SMP initialization */
     if (smp_request.response) {
         kprintf("[smp]  CPU count: %lu (BSP LAPIC ID: %u)\n",
                 smp_request.response->cpu_count,
                 smp_request.response->bsp_lapic_id);
     }
 
-    /* Step 11: Enable interrupts */
+    /* Step 12: Initialize keyboard driver */
+    kprintf("[kbd]  Initializing keyboard driver...\n");
+    keyboard_init();
+
+    /* Step 13: Enable interrupts */
     hal_interrupts_enable();
 
-    kprintf("\n[kernel] Atomical OS initialization complete.\n");
-    kprintf("[kernel] Entering idle loop.\n\n");
+    /* Step 14: Initialize scheduler */
+    kprintf("[sched] Initializing scheduler...\n");
+    sched_init();
 
-    /* Idle loop */
+    /* Step 15: Run kernel self-tests */
+    ktest_results_t results = ktest_run_all();
+
+    kprintf("[kernel] Atomical OS initialization complete.\n");
+    if (results.failed > 0) {
+        kprintf("[kernel] WARNING: %d test(s) failed!\n", results.failed);
+    }
+
+    /* Step 16: Interactive kernel shell */
+    kprintf("\natomical> ");
+
+    /* Simple kernel shell: echo typed characters, handle backspace/enter */
+    char line[256];
+    int line_pos = 0;
+
     for (;;) {
-        hal_cpu_idle();
+        char c = keyboard_poll();
+        if (!c) {
+            hal_cpu_idle();
+            continue;
+        }
+
+        if (c == '\n') {
+            kprintf("\n");
+            line[line_pos] = '\0';
+
+            /* Process commands */
+            if (line_pos > 0) {
+                if (strcmp(line, "help") == 0) {
+                    kprintf("Available commands:\n");
+                    kprintf("  help    - Show this help\n");
+                    kprintf("  info    - Show system information\n");
+                    kprintf("  mem     - Show memory statistics\n");
+                    kprintf("  test    - Run kernel self-tests\n");
+                    kprintf("  clear   - Clear the screen\n");
+                } else if (strcmp(line, "info") == 0) {
+                    kprintf("Atomical OS v%s\n", ATOMICAL_VERSION_STRING);
+                    kprintf("Architecture: "
+#if defined(__x86_64__)
+                            "x86_64"
+#elif defined(__aarch64__)
+                            "ARM64"
+#else
+                            "unknown"
+#endif
+                            "\n");
+                    if (smp_request.response)
+                        kprintf("CPUs: %lu\n", smp_request.response->cpu_count);
+                    kprintf("Framebuffer: %ux%u, %u bpp\n",
+                            kernel_fb.width, kernel_fb.height, kernel_fb.bpp);
+                } else if (strcmp(line, "mem") == 0) {
+                    kprintf("Total: %lu MB\n",
+                            pmm_get_total_memory() / (1024 * 1024));
+                    kprintf("Free:  %lu MB\n",
+                            pmm_get_free_memory() / (1024 * 1024));
+                } else if (strcmp(line, "test") == 0) {
+                    ktest_run_all();
+                } else if (strcmp(line, "clear") == 0) {
+                    fbcon_clear();
+                } else {
+                    kprintf("Unknown command: %s\n", line);
+                    kprintf("Type 'help' for available commands.\n");
+                }
+            }
+
+            line_pos = 0;
+            kprintf("atomical> ");
+        } else if (c == '\b') {
+            if (line_pos > 0) {
+                line_pos--;
+                kprintf("\b");
+            }
+        } else if (c >= 32 && c < 127 && line_pos < 255) {
+            line[line_pos++] = c;
+            kprintf("%c", c);
+        }
     }
 }

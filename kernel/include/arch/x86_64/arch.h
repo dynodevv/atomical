@@ -8,13 +8,17 @@
 
 #include <kernel/types.h>
 
-/* --- CPU Registers --- */
+/* --- CPU Context (matches hal_context_switch layout in entry.S) --- */
 
 typedef struct cpu_context {
-    uint64_t r15, r14, r13, r12;
-    uint64_t r11, r10, r9, r8;
-    uint64_t rbp, rdi, rsi, rdx, rcx, rbx, rax;
-    uint64_t rip, cs, rflags, rsp, ss;
+    uint64_t r15;   /* offset  0 */
+    uint64_t r14;   /* offset  8 */
+    uint64_t r13;   /* offset 16 */
+    uint64_t r12;   /* offset 24 */
+    uint64_t rbp;   /* offset 32 */
+    uint64_t rbx;   /* offset 40 */
+    uint64_t rsp;   /* offset 48 */
+    uint64_t rip;   /* offset 56 */
 } cpu_context_t;
 
 /* --- GDT --- */

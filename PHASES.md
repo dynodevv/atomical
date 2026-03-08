@@ -30,7 +30,7 @@ the fundamental subsystems that everything else is built on.
 Preemptive multitasking, ELF loading, and the system call interface needed to run
 userspace programs.
 
-- [ ] Scheduler implementation (CFS — Completely Fair Scheduler)
+- [x] Scheduler implementation (round-robin with cooperative yielding)
 - [ ] ELF binary loader
 - [ ] `sys_execve` system call
 - [ ] User stack initialization
@@ -43,9 +43,9 @@ userspace programs.
 
 Input, display, block storage, and network device drivers.
 
-- [ ] Keyboard driver (PS/2 + key repeat debouncing)
+- [x] Keyboard driver (PS/2 + key repeat debouncing)
 - [ ] Mouse driver (Virtio Tablet for absolute positioning)
-- [ ] Framebuffer API and graphics driver
+- [x] Framebuffer API and graphics driver
 - [ ] Block device layer
 - [ ] Virtio-Net driver
 

@@ -5,6 +5,7 @@
  */
 
 #include <kernel/kernel.h>
+#include <kernel/fbconsole.h>
 #include <hal/hal.h>
 
 /* --- String functions --- */
@@ -135,6 +136,22 @@ static void int_to_str(int64_t val, char *buf)
     uint_to_str((uint64_t)val, buf, 10, false);
 }
 
+/* --- Output helpers: write to both serial and framebuffer console --- */
+
+static void kputc(char c)
+{
+    hal_serial_putc(c);
+    if (fbcon_is_active())
+        fbcon_putchar(c);
+}
+
+static void kputs(const char *s)
+{
+    hal_serial_puts(s);
+    if (fbcon_is_active())
+        fbcon_puts(s);
+}
+
 /* --- vkprintf: kernel printf core with va_list --- */
 
 static void vkprintf(const char *fmt, __builtin_va_list args)
@@ -143,7 +160,7 @@ static void vkprintf(const char *fmt, __builtin_va_list args)
 
     while (*fmt) {
         if (*fmt != '%') {
-            hal_serial_putc(*fmt++);
+            kputc(*fmt++);
             continue;
         }
 
@@ -162,7 +179,7 @@ static void vkprintf(const char *fmt, __builtin_va_list args)
         case 's': {
             const char *s = __builtin_va_arg(args, const char *);
             if (!s) s = "(null)";
-            hal_serial_puts(s);
+            kputs(s);
             break;
         }
         case 'd':
@@ -173,7 +190,7 @@ static void vkprintf(const char *fmt, __builtin_va_list args)
             else
                 val = __builtin_va_arg(args, int);
             int_to_str(val, buf);
-            hal_serial_puts(buf);
+            kputs(buf);
             break;
         }
         case 'u': {
@@ -183,7 +200,7 @@ static void vkprintf(const char *fmt, __builtin_va_list args)
             else
                 val = __builtin_va_arg(args, unsigned int);
             uint_to_str(val, buf, 10, false);
-            hal_serial_puts(buf);
+            kputs(buf);
             break;
         }
         case 'x': {
@@ -193,7 +210,7 @@ static void vkprintf(const char *fmt, __builtin_va_list args)
             else
                 val = __builtin_va_arg(args, unsigned int);
             uint_to_str(val, buf, 16, false);
-            hal_serial_puts(buf);
+            kputs(buf);
             break;
         }
         case 'X': {
@@ -203,27 +220,27 @@ static void vkprintf(const char *fmt, __builtin_va_list args)
             else
                 val = __builtin_va_arg(args, unsigned int);
             uint_to_str(val, buf, 16, true);
-            hal_serial_puts(buf);
+            kputs(buf);
             break;
         }
         case 'p': {
             uintptr_t val = (uintptr_t)__builtin_va_arg(args, void *);
-            hal_serial_puts("0x");
+            kputs("0x");
             uint_to_str(val, buf, 16, false);
-            hal_serial_puts(buf);
+            kputs(buf);
             break;
         }
         case 'c': {
             char c = (char)__builtin_va_arg(args, int);
-            hal_serial_putc(c);
+            kputc(c);
             break;
         }
         case '%':
-            hal_serial_putc('%');
+            kputc('%');
             break;
         default:
-            hal_serial_putc('%');
-            hal_serial_putc(*fmt);
+            kputc('%');
+            kputc(*fmt);
             break;
         }
         fmt++;
