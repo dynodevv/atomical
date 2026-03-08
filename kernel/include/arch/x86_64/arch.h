@@ -21,13 +21,19 @@ typedef struct cpu_context {
     uint64_t rip;   /* offset 56 */
 } cpu_context_t;
 
-/* --- GDT --- */
+/* --- GDT selectors (Limine bootloader GDT layout) ---
+ *  0x00  Null
+ *  0x08  16-bit code
+ *  0x10  16-bit data
+ *  0x18  32-bit code
+ *  0x20  32-bit data
+ *  0x28  64-bit code  (kernel)
+ *  0x30  64-bit data  (kernel)
+ * User-mode and TSS segments require loading a custom GDT.
+ */
 
-#define GDT_KERNEL_CODE  0x08
-#define GDT_KERNEL_DATA  0x10
-#define GDT_USER_CODE    0x18
-#define GDT_USER_DATA    0x20
-#define GDT_TSS          0x28
+#define GDT_KERNEL_CODE  0x28
+#define GDT_KERNEL_DATA  0x30
 
 typedef struct PACKED gdt_entry {
     uint16_t limit_low;

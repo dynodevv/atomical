@@ -200,6 +200,9 @@ hal_context_switch:
 /*
  * Enter userspace: hal_userspace_enter(entry, user_stack, arg)
  * Uses iretq to transition to Ring 3.
+ * TODO: The selectors below require a custom GDT with user-mode segments.
+ *       Limine's GDT only has kernel segments.  A gdt_init() that installs
+ *       user code/data descriptors must be called before using this function.
  */
 .global hal_userspace_enter
 hal_userspace_enter:
