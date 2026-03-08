@@ -93,16 +93,26 @@ A composited graphical desktop with a macOS-inspired design language.
 
 Built-in applications that ship with the OS.
 
-- [ ] Console (terminal emulator + built-in shell)
-- [ ] File Manager
-- [ ] Text Editor (Notes)
-- [ ] Image Viewer
-- [ ] Media Player (MP3 playback)
-- [ ] Task Manager
-- [ ] Calculator
-- [ ] Clock
-- [ ] System Settings
-- [ ] System Installer
+- [ ] Console
+  - A terminal emulator + shell
+- [ ] Files
+  - A file manager
+- [ ] Notes
+  - A text editor
+- [ ] Viewer
+  - A JPEG/PNG image viewer
+- [ ] Player
+  - A MP3 audio player
+- [ ] Processes
+  - A task manager
+- [ ] Calculate
+  - A calculator
+- [ ] Time
+  - A clock, stopwatch and timer app
+- [ ] Configure
+  - A system settings app
+- [ ] Install
+  - A system installer app
 
 ---
 
