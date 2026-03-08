@@ -130,16 +130,15 @@ static void keyboard_irq_handler(uint32_t irq, void *context)
 
 void keyboard_init(void)
 {
-    /* Unmask IRQ1 on the PIC */
-    uint8_t mask = inb(0x21);
-    mask &= ~(1 << 1);
-    outb(0x21, mask);
-
     /* Flush any pending data */
     while (inb(KBD_STATUS_PORT) & 0x01)
         inb(KBD_DATA_PORT);
 
     hal_irq_register(1, keyboard_irq_handler, NULL);
+
+    /* Unmask IRQ1 on the PIC */
+    hal_irq_unmask(1);
+
     kprintf("[kbd]  PS/2 keyboard initialized (IRQ1)\n");
 }
 

@@ -243,3 +243,17 @@ void hal_irq_ack(uint32_t irq)
         outb(0xA0, 0x20);
     outb(0x20, 0x20);
 }
+
+void hal_irq_unmask(uint32_t irq)
+{
+    uint16_t port = (irq < 8) ? 0x21 : 0xA1;
+    uint8_t  bit  = (uint8_t)(irq & 7);
+    outb(port, inb(port) & ~(1 << bit));
+}
+
+void hal_irq_mask(uint32_t irq)
+{
+    uint16_t port = (irq < 8) ? 0x21 : 0xA1;
+    uint8_t  bit  = (uint8_t)(irq & 7);
+    outb(port, inb(port) | (1 << bit));
+}

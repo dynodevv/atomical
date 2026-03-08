@@ -29,6 +29,8 @@ typedef void (*irq_handler_t)(uint32_t irq, void *context);
 int  hal_irq_register(uint32_t irq, irq_handler_t handler, void *context);
 void hal_irq_unregister(uint32_t irq);
 void hal_irq_ack(uint32_t irq);
+void hal_irq_unmask(uint32_t irq);
+void hal_irq_mask(uint32_t irq);
 
 /* --- Timer --- */
 void     hal_timer_init(uint32_t frequency_hz);
