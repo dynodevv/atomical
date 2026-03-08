@@ -152,12 +152,24 @@ void kmain(void)
         kernel_fb.bpp     = (uint8_t)lfb->bpp;
         kprintf("[boot] Framebuffer: %ux%u, %u bpp\n",
                 kernel_fb.width, kernel_fb.height, kernel_fb.bpp);
-        boot_splash(&kernel_fb);
+        if (kernel_fb.bpp == 32) {
+            boot_splash(&kernel_fb);
+        } else {
+            kprintf("[boot] WARNING: Splash requires 32-bpp framebuffer, skipping\n");
+        }
     } else {
         kprintf("[boot] WARNING: No framebuffer available\n");
     }
 
-    /* Step 3: Parse memory map and initialize physical memory manager */
+    /* Step 3: Store HHDM offset (must be before pmm_init and heap_init) */
+    if (hhdm_request.response) {
+        hhdm_offset = hhdm_request.response->offset;
+        kprintf("[boot] HHDM offset: 0x%lx\n", hhdm_offset);
+    } else {
+        panic("No HHDM response from bootloader!");
+    }
+
+    /* Step 4: Parse memory map and initialize physical memory manager */
     if (memmap_request.response) {
         kprintf("[boot] Memory map: %lu entries\n",
                 memmap_request.response->entry_count);
@@ -168,11 +180,6 @@ void kmain(void)
                 pmm_get_free_memory() / (1024 * 1024));
     } else {
         panic("No memory map from bootloader!");
-    }
-
-    /* Step 4: HHDM offset */
-    if (hhdm_request.response) {
-        kprintf("[boot] HHDM offset: 0x%lx\n", hhdm_request.response->offset);
     }
 
     /* Step 5: Initialize MMU / paging */

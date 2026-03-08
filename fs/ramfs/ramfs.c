@@ -122,12 +122,20 @@ static ssize_t ramfs_write(struct file *file, const void *buf, size_t count, off
         if (!new_data)
             return -1;
 
+        /* Zero the entire new buffer to prevent stale data exposure */
+        memset(new_data, 0, new_cap);
+
         if (ri->data) {
-            memcpy(new_data, ri->data, ri->capacity);
+            memcpy(new_data, ri->data, inode->size < ri->capacity ? inode->size : ri->capacity);
             kfree(ri->data);
         }
         ri->data = new_data;
         ri->capacity = new_cap;
+    }
+
+    /* Zero-fill gap between old EOF and write start */
+    if ((uint64_t)*offset > inode->size) {
+        memset((uint8_t *)ri->data + inode->size, 0, (size_t)(*offset - inode->size));
     }
 
     memcpy((uint8_t *)ri->data + *offset, buf, count);

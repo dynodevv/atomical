@@ -8,6 +8,13 @@
 
 #include <kernel/types.h>
 
+/* --- HHDM (Higher Half Direct Map) --- */
+
+extern uintptr_t hhdm_offset;
+
+#define PHYS_TO_VIRT(phys) ((void *)((uintptr_t)(phys) + hhdm_offset))
+#define VIRT_TO_PHYS(virt) ((uintptr_t)(virt) - hhdm_offset)
+
 /* --- Physical Frame Allocator --- */
 
 void      pmm_init(void *memmap, uint64_t entry_count);

@@ -12,8 +12,13 @@ _start:
     /* Clear direction flag */
     cld
 
-    /* Zero out BSS - Limine should do this, but be safe */
-    xor %rdi, %rdi
+    /* Zero out BSS */
+    lea __bss_start(%rip), %rdi
+    lea __bss_end(%rip), %rcx
+    sub %rdi, %rcx
+    shr $3, %rcx          /* count in 8-byte units */
+    xor %rax, %rax
+    rep stosq
 
     /* Set up a known-good stack (Limine provides one, but we ensure alignment) */
     and $~0xF, %rsp

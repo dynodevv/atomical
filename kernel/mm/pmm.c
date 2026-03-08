@@ -16,6 +16,9 @@ static uint64_t total_memory = 0;
 static uint64_t free_memory = 0;
 static uint64_t highest_page = 0;
 
+/* Global HHDM offset — set by kmain before pmm_init */
+uintptr_t hhdm_offset = 0;
+
 /* Bitmap helpers */
 static inline void bitmap_set(uint64_t page)
 {
@@ -45,16 +48,21 @@ void pmm_init(void *memmap_entries, uint64_t entry_count)
 
         /* Track total memory */
         uint64_t end = entry->base + entry->length;
-        if (end / PAGE_SIZE > highest_page)
-            highest_page = end / PAGE_SIZE;
+        uint64_t end_page = end / PAGE_SIZE;
+        if (end_page > BITMAP_MAX_PAGES)
+            end_page = BITMAP_MAX_PAGES;
+        if (end_page > highest_page)
+            highest_page = end_page;
 
         if (entry->type == LIMINE_MEMMAP_USABLE) {
             /* Mark these frames as free */
             uint64_t base_page = ALIGN_UP(entry->base, PAGE_SIZE) / PAGE_SIZE;
-            uint64_t page_count = entry->length / PAGE_SIZE;
+            uint64_t last_page = ALIGN_DOWN(entry->base + entry->length, PAGE_SIZE) / PAGE_SIZE;
+            if (last_page > BITMAP_MAX_PAGES)
+                last_page = BITMAP_MAX_PAGES;
 
-            for (uint64_t p = 0; p < page_count && (base_page + p) < BITMAP_MAX_PAGES; p++) {
-                bitmap_clear(base_page + p);
+            for (uint64_t p = base_page; p < last_page; p++) {
+                bitmap_clear(p);
                 free_memory += PAGE_SIZE;
             }
             total_memory += entry->length;
@@ -68,7 +76,7 @@ void pmm_init(void *memmap_entries, uint64_t entry_count)
 
 uintptr_t pmm_alloc_frame(void)
 {
-    for (uint64_t i = 0; i < highest_page / 64; i++) {
+    for (uint64_t i = 0; i < (highest_page + 63) / 64; i++) {
         if (bitmap[i] == 0xFFFFFFFFFFFFFFFF)
             continue;  /* All pages in this group are used */
 

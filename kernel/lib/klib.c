@@ -135,13 +135,10 @@ static void int_to_str(int64_t val, char *buf)
     uint_to_str((uint64_t)val, buf, 10, false);
 }
 
-/* --- kprintf: minimal kernel printf --- */
+/* --- vkprintf: kernel printf core with va_list --- */
 
-void kprintf(const char *fmt, ...)
+static void vkprintf(const char *fmt, __builtin_va_list args)
 {
-    __builtin_va_list args;
-    __builtin_va_start(args, fmt);
-
     char buf[128];
 
     while (*fmt) {
@@ -231,7 +228,15 @@ void kprintf(const char *fmt, ...)
         }
         fmt++;
     }
+}
 
+/* --- kprintf: minimal kernel printf --- */
+
+void kprintf(const char *fmt, ...)
+{
+    __builtin_va_list args;
+    __builtin_va_start(args, fmt);
+    vkprintf(fmt, args);
     __builtin_va_end(args);
 }
 
@@ -245,9 +250,10 @@ void klog(log_level_t level, const char *subsystem, const char *fmt, ...)
 
     kprintf("[%s] %s: ", level_names[level], subsystem);
 
-    /* Note: klog currently only supports simple string messages.
-     * For formatted output, use kprintf directly. */
-    hal_serial_puts(fmt);
+    __builtin_va_list args;
+    __builtin_va_start(args, fmt);
+    vkprintf(fmt, args);
+    __builtin_va_end(args);
 
     kprintf("\n");
 }
@@ -261,9 +267,10 @@ NORETURN void panic(const char *fmt, ...)
     kprintf("\n\n!!! KERNEL PANIC !!!\n");
     kprintf("Reason: ");
 
-    /* Print the panic message directly via serial.
-     * Note: For full format string support, a vkprintf variant is needed. */
-    hal_serial_puts(fmt);
+    __builtin_va_list args;
+    __builtin_va_start(args, fmt);
+    vkprintf(fmt, args);
+    __builtin_va_end(args);
 
     kprintf("\n\nSystem halted.\n");
 

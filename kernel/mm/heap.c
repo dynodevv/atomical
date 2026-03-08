@@ -25,10 +25,13 @@ static size_t        heap_total = 0;
 void heap_init(void)
 {
     size_t heap_size = HEAP_INITIAL_PAGES * PAGE_SIZE;
-    uintptr_t heap_base = pmm_alloc_frames(HEAP_INITIAL_PAGES);
-    if (!heap_base) {
+    uintptr_t heap_phys = pmm_alloc_frames(HEAP_INITIAL_PAGES);
+    if (!heap_phys) {
         panic("Failed to allocate kernel heap!");
     }
+
+    /* Convert physical address to virtual via HHDM */
+    uintptr_t heap_base = (uintptr_t)PHYS_TO_VIRT(heap_phys);
 
     heap_start = (heap_block_t *)heap_base;
     heap_start->size = heap_size - HEAP_BLOCK_HDR_SIZE;

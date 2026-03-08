@@ -161,10 +161,47 @@ void x86_64_exception_handler(interrupt_frame_t *frame)
     }
 }
 
+/* PIC remapping: move IRQs 0-15 to vectors 32-47 */
+static void pic_remap(void)
+{
+    /* Save masks */
+    uint8_t mask1 = inb(0x21);
+    uint8_t mask2 = inb(0xA1);
+
+    /* ICW1: begin initialization in cascade mode */
+    outb(0x20, 0x11);
+    io_wait();
+    outb(0xA0, 0x11);
+    io_wait();
+
+    /* ICW2: vector offsets — master IRQs at 32, slave at 40 */
+    outb(0x21, 0x20);  /* master offset = 32 */
+    io_wait();
+    outb(0xA1, 0x28);  /* slave offset = 40 */
+    io_wait();
+
+    /* ICW3: cascade wiring */
+    outb(0x21, 0x04);  /* master: slave on IRQ2 */
+    io_wait();
+    outb(0xA1, 0x02);  /* slave: cascade identity */
+    io_wait();
+
+    /* ICW4: 8086 mode */
+    outb(0x21, 0x01);
+    io_wait();
+    outb(0xA1, 0x01);
+    io_wait();
+
+    /* Restore masks */
+    outb(0x21, mask1);
+    outb(0xA1, mask2);
+}
+
 /* HAL interrupt functions */
 
 void hal_interrupts_init(void)
 {
+    pic_remap();
     idt_init();
     /* TODO: Initialize APIC/IOAPIC */
 }

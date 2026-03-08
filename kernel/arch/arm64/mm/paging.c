@@ -23,19 +23,19 @@ page_table_t *hal_mmu_create_address_space(void)
     uintptr_t frame = pmm_alloc_frame();
     if (!frame) return NULL;
 
-    page_table_t *pgd = (page_table_t *)frame;
+    page_table_t *pgd = (page_table_t *)PHYS_TO_VIRT(frame);
     memset(pgd, 0, PAGE_SIZE);
     return pgd;
 }
 
 void hal_mmu_destroy_address_space(page_table_t *pt)
 {
-    pmm_free_frame((uintptr_t)pt);
+    pmm_free_frame(VIRT_TO_PHYS(pt));
 }
 
 void hal_mmu_switch_address_space(page_table_t *pt)
 {
-    SYSREG_WRITE(TTBR0_EL1, (uint64_t)pt);
+    SYSREG_WRITE(TTBR0_EL1, VIRT_TO_PHYS(pt));
     arm64_isb();
     arm64_tlbi_all();
 }
@@ -63,26 +63,29 @@ int hal_mmu_map_page(page_table_t *pgd, uintptr_t virt, uintptr_t phys, uint64_t
     if (!(*entry & ARM64_PTE_VALID)) {
         uintptr_t frame = pmm_alloc_frame();
         if (!frame) return -1;
+        memset(PHYS_TO_VIRT(frame), 0, PAGE_SIZE);
         *entry = frame | ARM64_PTE_VALID | ARM64_PTE_TABLE;
     }
 
-    page_table_t *pud = (page_table_t *)(*entry & ARM64_PTE_ADDR_MASK);
+    page_table_t *pud = (page_table_t *)PHYS_TO_VIRT(*entry & ARM64_PTE_ADDR_MASK);
     entry = &pud->entries[pud_idx];
     if (!(*entry & ARM64_PTE_VALID)) {
         uintptr_t frame = pmm_alloc_frame();
         if (!frame) return -1;
+        memset(PHYS_TO_VIRT(frame), 0, PAGE_SIZE);
         *entry = frame | ARM64_PTE_VALID | ARM64_PTE_TABLE;
     }
 
-    page_table_t *pmd = (page_table_t *)(*entry & ARM64_PTE_ADDR_MASK);
+    page_table_t *pmd = (page_table_t *)PHYS_TO_VIRT(*entry & ARM64_PTE_ADDR_MASK);
     entry = &pmd->entries[pmd_idx];
     if (!(*entry & ARM64_PTE_VALID)) {
         uintptr_t frame = pmm_alloc_frame();
         if (!frame) return -1;
+        memset(PHYS_TO_VIRT(frame), 0, PAGE_SIZE);
         *entry = frame | ARM64_PTE_VALID | ARM64_PTE_TABLE;
     }
 
-    page_table_t *pt = (page_table_t *)(*entry & ARM64_PTE_ADDR_MASK);
+    page_table_t *pt = (page_table_t *)PHYS_TO_VIRT(*entry & ARM64_PTE_ADDR_MASK);
     pt->entries[pte_idx] = phys | arm_flags | ARM64_PTE_PAGE;
 
     return 0;
@@ -98,15 +101,15 @@ int hal_mmu_unmap_page(page_table_t *pgd, uintptr_t virt)
     pte_t *entry = &pgd->entries[pgd_idx];
     if (!(*entry & ARM64_PTE_VALID)) return -1;
 
-    page_table_t *pud = (page_table_t *)(*entry & ARM64_PTE_ADDR_MASK);
+    page_table_t *pud = (page_table_t *)PHYS_TO_VIRT(*entry & ARM64_PTE_ADDR_MASK);
     entry = &pud->entries[pud_idx];
     if (!(*entry & ARM64_PTE_VALID)) return -1;
 
-    page_table_t *pmd = (page_table_t *)(*entry & ARM64_PTE_ADDR_MASK);
+    page_table_t *pmd = (page_table_t *)PHYS_TO_VIRT(*entry & ARM64_PTE_ADDR_MASK);
     entry = &pmd->entries[pmd_idx];
     if (!(*entry & ARM64_PTE_VALID)) return -1;
 
-    page_table_t *pt = (page_table_t *)(*entry & ARM64_PTE_ADDR_MASK);
+    page_table_t *pt = (page_table_t *)PHYS_TO_VIRT(*entry & ARM64_PTE_ADDR_MASK);
     pt->entries[pte_idx] = 0;
 
     arm64_tlbi_va(virt);
@@ -123,15 +126,15 @@ uintptr_t hal_mmu_virt_to_phys(page_table_t *pgd, uintptr_t virt)
     pte_t *entry = &pgd->entries[pgd_idx];
     if (!(*entry & ARM64_PTE_VALID)) return 0;
 
-    page_table_t *pud = (page_table_t *)(*entry & ARM64_PTE_ADDR_MASK);
+    page_table_t *pud = (page_table_t *)PHYS_TO_VIRT(*entry & ARM64_PTE_ADDR_MASK);
     entry = &pud->entries[pud_idx];
     if (!(*entry & ARM64_PTE_VALID)) return 0;
 
-    page_table_t *pmd = (page_table_t *)(*entry & ARM64_PTE_ADDR_MASK);
+    page_table_t *pmd = (page_table_t *)PHYS_TO_VIRT(*entry & ARM64_PTE_ADDR_MASK);
     entry = &pmd->entries[pmd_idx];
     if (!(*entry & ARM64_PTE_VALID)) return 0;
 
-    page_table_t *pt = (page_table_t *)(*entry & ARM64_PTE_ADDR_MASK);
+    page_table_t *pt = (page_table_t *)PHYS_TO_VIRT(*entry & ARM64_PTE_ADDR_MASK);
     if (!(pt->entries[pte_idx] & ARM64_PTE_VALID)) return 0;
 
     return (pt->entries[pte_idx] & ARM64_PTE_ADDR_MASK) | (virt & 0xFFF);

@@ -82,7 +82,8 @@ int vfs_mount(const char *source, const char *target, const char *fstype, const 
     if (!sb)
         return -1;
 
-    strncpy(mount_table[mount_count].path, target, VFS_PATH_MAX - 1);
+    strncpy(mount_table[mount_count].path, target ? target : "", VFS_PATH_MAX - 1);
+    mount_table[mount_count].path[VFS_PATH_MAX - 1] = '\0';
     mount_table[mount_count].sb = sb;
     mount_count++;
 
