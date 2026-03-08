@@ -137,7 +137,8 @@ struct file *vfs_open(const char *path, uint32_t flags, mode_t mode)
     struct dentry *dentry = vfs_lookup(path);
 
     if (!dentry && (flags & O_CREAT)) {
-        /* TODO: Create the file */
+        /* TODO: Create the file using mode */
+        (void)mode;
         return NULL;
     }
 

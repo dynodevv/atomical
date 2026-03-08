@@ -44,13 +44,12 @@ INCLUDES := -Ikernel/include -Ikernel/include/arch/$(ARCH)
 CFLAGS := -std=gnu11 -O2 -g \
           -Wall -Wextra -Werror \
           -ffreestanding -fno-stack-protector \
-          -fno-exceptions -fno-pic \
-          -mno-red-zone \
+          -fno-pic \
           -nostdlib -nostdinc \
           $(INCLUDES)
 
 ifeq ($(ARCH),x86_64)
-    CFLAGS += -mcmodel=kernel -mno-sse -mno-sse2 -mno-mmx -mno-80387
+    CFLAGS += -mcmodel=kernel -mno-red-zone -mno-sse -mno-sse2 -mno-mmx -mno-80387
 else ifeq ($(ARCH),arm64)
     CFLAGS += -mgeneral-regs-only
 endif

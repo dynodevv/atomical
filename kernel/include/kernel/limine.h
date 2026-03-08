@@ -189,6 +189,7 @@ struct limine_rsdp_request {
 
 /* --- SMP (Symmetric Multi-Processing) --- */
 
+struct limine_smp_info;
 typedef void (*limine_goto_address)(struct limine_smp_info *);
 
 struct limine_smp_info {

@@ -14,7 +14,7 @@ iso/boot/limine/limine-uefi-cd.bin
 iso/boot/limine/BOOTX64.EFI
 iso/boot/limine/BOOTAA64.EFI
 iso/boot/limine/BOOTIA32.EFI
-limine/
+/limine/
 
 # Editor files
 *.swp

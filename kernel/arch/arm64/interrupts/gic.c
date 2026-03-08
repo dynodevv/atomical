@@ -89,6 +89,7 @@ void gicv3_send_eoi(uint32_t irq)
 
 void arm64_handle_sync(void *frame)
 {
+    (void)frame;
     uint64_t esr;
     __asm__ volatile("mrs %0, esr_el1" : "=r"(esr));
 
@@ -110,6 +111,7 @@ void arm64_handle_sync(void *frame)
 
 void arm64_handle_irq(void *frame)
 {
+    (void)frame;
     uint32_t irq = gicv3_ack_irq();
 
     if (irq < 1024 && arm64_irq_handlers[irq]) {

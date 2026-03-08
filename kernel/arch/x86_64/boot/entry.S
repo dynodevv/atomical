@@ -207,3 +207,6 @@ hal_userspace_enter:
     xor %r14, %r14
     xor %r15, %r15
     iretq
+
+/* Mark stack as non-executable (suppresses ld warning) */
+.section .note.GNU-stack, "", @progbits

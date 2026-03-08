@@ -21,19 +21,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install cross-compilation toolchain
+      - name: Install build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential nasm xorriso mtools
-
-          # Install x86_64-elf cross compiler
-          mkdir -p $HOME/cross
-          cd /tmp
-          wget -q https://github.com/lordmilko/i686-elf-tools/releases/latest/download/x86_64-elf-tools-linux.tar.gz || true
-          if [ -f x86_64-elf-tools-linux.tar.gz ]; then
-            tar xf x86_64-elf-tools-linux.tar.gz -C $HOME/cross
-            echo "$HOME/cross/bin" >> $GITHUB_PATH
-          fi
 
       - name: Clone and build Limine
         run: |
@@ -42,30 +33,21 @@ jobs:
 
       - name: Build kernel (x86_64)
         run: |
-          # If cross compiler not available, try with system gcc for syntax check
-          if command -v x86_64-elf-gcc &> /dev/null; then
-            make ARCH=x86_64 kernel
-          else
-            echo "Cross compiler not available - skipping actual build"
-            echo "Source files validated successfully"
-          fi
+          # The CI runner is x86_64, so system gcc/ld can produce bare-metal x86_64 ELFs
+          make ARCH=x86_64 CC=gcc LD=ld kernel
 
       - name: Build ISO (x86_64)
-        if: success()
         run: |
-          if [ -f build/x86_64/atomical.elf ]; then
-            make ARCH=x86_64 iso || echo "ISO build requires additional tools"
-          fi
+          make ARCH=x86_64 CC=gcc LD=ld iso || echo "::warning::ISO build incomplete (missing Limine binaries)"
 
       - name: Upload kernel artifact
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: atomical-x86_64
           path: |
             build/x86_64/atomical.elf
             build/atomical-x86_64.iso
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
   build-arm64:
     name: Build ARM64 Kernel
@@ -86,19 +68,20 @@ jobs:
 
       - name: Build kernel (ARM64)
         run: |
-          # Use the system aarch64 cross compiler with adjusted names
-          make ARCH=arm64 CC=aarch64-linux-gnu-gcc AS=aarch64-linux-gnu-as LD=aarch64-linux-gnu-ld kernel || \
-            echo "ARM64 build attempted"
+          make ARCH=arm64 \
+            CC=aarch64-linux-gnu-gcc \
+            AS=aarch64-linux-gnu-as \
+            LD=aarch64-linux-gnu-ld \
+            OBJCOPY=aarch64-linux-gnu-objcopy \
+            kernel
 
       - name: Upload kernel artifact
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: atomical-arm64
           path: |
             build/arm64/atomical.elf
-            build/atomical-arm64.iso
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
   validate-sources:
     name: Validate Source Structure
