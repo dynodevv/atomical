@@ -10,6 +10,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-x86_64:
     name: Build x86_64 Kernel
