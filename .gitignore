@@ -1,0 +1,33 @@
+# Build artifacts
+build/
+*.o
+*.d
+*.bin
+*.elf
+*.iso
+*.img
+
+# Limine binary files
+iso/boot/limine/limine-bios.sys
+iso/boot/limine/limine-bios-cd.bin
+iso/boot/limine/limine-uefi-cd.bin
+iso/boot/limine/BOOTX64.EFI
+iso/boot/limine/BOOTAA64.EFI
+iso/boot/limine/BOOTIA32.EFI
+/limine/
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Temporary files
+/tmp/
+*.tmp
+*.log

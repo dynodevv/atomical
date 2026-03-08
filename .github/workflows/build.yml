@@ -1,0 +1,152 @@
+# Atomical OS - CI/CD Build Pipeline
+# Automated kernel builds and ISO generation for all supported architectures.
+
+name: Build Atomical OS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-x86_64:
+    name: Build x86_64 Kernel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential nasm xorriso mtools
+
+      - name: Clone and build Limine
+        run: |
+          git clone --depth=1 --branch=v8.x-binary https://github.com/limine-bootloader/limine.git limine
+          cd limine && make || true
+
+      - name: Build kernel (x86_64)
+        run: |
+          # The CI runner is x86_64, so system gcc/ld can produce bare-metal x86_64 ELFs
+          make ARCH=x86_64 CC=gcc LD=ld kernel
+
+      - name: Build ISO (x86_64)
+        run: |
+          make ARCH=x86_64 CC=gcc LD=ld iso || echo "::warning::ISO build incomplete (missing Limine binaries)"
+
+      - name: Upload kernel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: atomical-x86_64
+          path: |
+            build/x86_64/atomical.elf
+            build/atomical-x86_64.iso
+          if-no-files-found: warn
+
+  build-arm64:
+    name: Build ARM64 Kernel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cross-compilation toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu xorriso mtools
+
+      - name: Clone and build Limine
+        run: |
+          git clone --depth=1 --branch=v8.x-binary https://github.com/limine-bootloader/limine.git limine
+          cd limine && make || true
+
+      - name: Build kernel (ARM64)
+        run: |
+          make ARCH=arm64 \
+            CC=aarch64-linux-gnu-gcc \
+            AS=aarch64-linux-gnu-as \
+            LD=aarch64-linux-gnu-ld \
+            OBJCOPY=aarch64-linux-gnu-objcopy \
+            kernel
+
+      - name: Upload kernel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: atomical-arm64
+          path: |
+            build/arm64/atomical.elf
+          if-no-files-found: warn
+
+  validate-sources:
+    name: Validate Source Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify project structure
+        run: |
+          echo "=== Verifying Atomical OS project structure ==="
+
+          # Check critical directories
+          dirs=(
+            "kernel/arch/x86_64"
+            "kernel/arch/arm64"
+            "kernel/include/kernel"
+            "kernel/include/hal"
+            "kernel/mm"
+            "kernel/lib"
+            "fs/vfs"
+            "fs/ramfs"
+            "fs/ext4"
+            "drivers"
+            "net"
+            "gui/compositor"
+            "gui/apps"
+            "userspace"
+          )
+
+          for dir in "${dirs[@]}"; do
+            if [ -d "$dir" ]; then
+              echo "✓ $dir"
+            else
+              echo "✗ $dir (MISSING)"
+              exit 1
+            fi
+          done
+
+          # Check critical source files
+          files=(
+            "kernel/main.c"
+            "kernel/include/kernel/kernel.h"
+            "kernel/include/kernel/types.h"
+            "kernel/include/kernel/limine.h"
+            "kernel/include/hal/hal.h"
+            "kernel/include/kernel/mm.h"
+            "kernel/include/kernel/vfs.h"
+            "kernel/include/kernel/sched.h"
+            "kernel/arch/x86_64/boot/entry.S"
+            "kernel/arch/arm64/boot/entry.S"
+            "kernel/arch/x86_64/linker.ld"
+            "kernel/arch/arm64/linker.ld"
+            "Makefile"
+            "iso/boot/limine/limine.conf"
+          )
+
+          for file in "${files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✓ $file"
+            else
+              echo "✗ $file (MISSING)"
+              exit 1
+            fi
+          done
+
+          echo ""
+          echo "=== All checks passed ==="
