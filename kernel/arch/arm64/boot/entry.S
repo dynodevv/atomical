@@ -199,9 +199,9 @@ hal_userspace_enter:
     msr spsr_el1, x0
     msr sp_el0, x1           /* User stack */
     mov x0, x2               /* First argument */
-    xor x1, x1, x1
-    xor x2, x2, x2
-    xor x3, x3, x3
+    mov x1, xzr              /* Clear registers for security */
+    mov x2, xzr
+    mov x3, xzr
     eret
 
 /*

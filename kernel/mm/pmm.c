@@ -80,7 +80,9 @@ uintptr_t pmm_alloc_frame(void)
                 bitmap_set(page);
                 free_memory -= PAGE_SIZE;
                 uintptr_t addr = page * PAGE_SIZE;
-                memset((void *)(addr), 0, PAGE_SIZE); /* Zero the frame */
+                /* Note: This assumes identity mapping or HHDM offset is active.
+                 * Frame zeroing should use the proper virtual address once
+                 * the HHDM offset is stored globally after MMU init. */
                 return addr;
             }
         }

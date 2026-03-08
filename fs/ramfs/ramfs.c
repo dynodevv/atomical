@@ -161,6 +161,7 @@ static struct superblock *ramfs_mount(const char *source, const void *data)
 
     struct dentry *root_dentry = kzalloc(sizeof(struct dentry));
     if (!root_dentry) {
+        kfree(root_inode->private_data);
         kfree(root_inode);
         kfree(sb);
         return NULL;

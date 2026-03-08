@@ -245,13 +245,9 @@ void klog(log_level_t level, const char *subsystem, const char *fmt, ...)
 
     kprintf("[%s] %s: ", level_names[level], subsystem);
 
-    /* Forward the rest to serial */
-    __builtin_va_list args;
-    __builtin_va_start(args, fmt);
-    /* Simple re-print: just call kprintf with the format again */
-    /* In a full implementation we'd use a vkprintf variant */
-    kprintf(fmt);
-    __builtin_va_end(args);
+    /* Note: klog currently only supports simple string messages.
+     * For formatted output, use kprintf directly. */
+    hal_serial_puts(fmt);
 
     kprintf("\n");
 }
@@ -265,10 +261,9 @@ NORETURN void panic(const char *fmt, ...)
     kprintf("\n\n!!! KERNEL PANIC !!!\n");
     kprintf("Reason: ");
 
-    __builtin_va_list args;
-    __builtin_va_start(args, fmt);
-    kprintf(fmt);
-    __builtin_va_end(args);
+    /* Print the panic message directly via serial.
+     * Note: For full format string support, a vkprintf variant is needed. */
+    hal_serial_puts(fmt);
 
     kprintf("\n\nSystem halted.\n");
 
