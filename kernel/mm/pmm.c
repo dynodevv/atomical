@@ -57,7 +57,7 @@ void pmm_init(void *memmap_entries, uint64_t entry_count)
         if (entry->type == LIMINE_MEMMAP_USABLE) {
             /* Mark these frames as free */
             uint64_t base_page = ALIGN_UP(entry->base, PAGE_SIZE) / PAGE_SIZE;
-            uint64_t last_page = ALIGN_DOWN(entry->base + entry->length, PAGE_SIZE) / PAGE_SIZE;
+            uint64_t last_page = (entry->base + entry->length) / PAGE_SIZE;
             if (last_page > BITMAP_MAX_PAGES)
                 last_page = BITMAP_MAX_PAGES;
 
