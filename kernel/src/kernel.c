@@ -16,7 +16,12 @@ struct window {
 };
 
 static volatile struct limine_framebuffer_request fb_req = {
-    .id = LIMINE_FRAMEBUFFER_REQUEST,
+    .id = {
+        LIMINE_COMMON_MAGIC1,
+        LIMINE_COMMON_MAGIC2,
+        LIMINE_FRAMEBUFFER_MAGIC1,
+        LIMINE_FRAMEBUFFER_MAGIC2,
+    },
     .revision = 0,
     .response = 0,
 };
@@ -27,7 +32,8 @@ static uint64_t fb_width;
 static uint64_t fb_height;
 static uint64_t fb_pitch;
 
-static uint8_t backbuf_storage[1920 * 1080 * 4];
+#define MAX_BACKBUFFER_BYTES (1920u * 1080u * 4u)
+static uint8_t backbuf_storage[MAX_BACKBUFFER_BYTES];
 
 static inline void put_px(int x, int y, uint32_t c) {
     if (x < 0 || y < 0 || (uint64_t)x >= fb_width || (uint64_t)y >= fb_height) {
@@ -46,14 +52,14 @@ static void fill_rect(int x, int y, int w, int h, uint32_t c) {
 
 static uint32_t blend(uint32_t fg, uint32_t bg, uint8_t a) {
     uint8_t fr = (fg >> 16) & 0xff;
-    uint8_t fgc = (fg >> 8) & 0xff;
+    uint8_t fg_g = (fg >> 8) & 0xff;
     uint8_t fb = fg & 0xff;
     uint8_t br = (bg >> 16) & 0xff;
-    uint8_t bgc = (bg >> 8) & 0xff;
+    uint8_t bg_g = (bg >> 8) & 0xff;
     uint8_t bb = bg & 0xff;
 
     uint8_t r = (uint8_t)((fr * a + br * (255 - a)) / 255);
-    uint8_t g = (uint8_t)((fgc * a + bgc * (255 - a)) / 255);
+    uint8_t g = (uint8_t)((fg_g * a + bg_g * (255 - a)) / 255);
     uint8_t b = (uint8_t)((fb * a + bb * (255 - a)) / 255);
     return (r << 16) | (g << 8) | b;
 }
@@ -169,7 +175,7 @@ void kernel_main(void) {
     fb_pitch = fb->pitch;
 
     uint64_t needed = fb_pitch * fb_height;
-    if (needed > sizeof(backbuf_storage)) {
+    if (needed > MAX_BACKBUFFER_BYTES) {
         hlt_forever();
     }
 

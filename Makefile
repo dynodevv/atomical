@@ -11,7 +11,7 @@ LIMINE_BRANCH := v8.x-binary
 CC := gcc
 LD := ld
 CFLAGS := -std=gnu11 -ffreestanding -fno-stack-protector -fno-pic -m64 -O2 -Wall -Wextra -Ikernel/include
-LDFLAGS := -nostdlib -z max-page-size=0x1000 -T /home/runner/work/atomical/atomical/kernel/linker.ld
+LDFLAGS := -nostdlib -z max-page-size=0x1000 -T kernel/linker.ld
 
 KERNEL_C_SRCS := $(wildcard kernel/src/*.c)
 KERNEL_S_SRCS := $(wildcard kernel/src/*.S)
@@ -42,7 +42,7 @@ $(KERNEL): $(KERNEL_OBJS)
 
 $(ISO): $(KERNEL) $(LIMINE_DIR) $(LIMINE_DIR)/limine
 	mkdir -p $(ISO_ROOT)/boot $(ISO_ROOT)/boot/limine $(ISO_ROOT)/EFI/BOOT
-	cp /home/runner/work/atomical/atomical/boot/limine.cfg $(ISO_ROOT)/boot/limine/limine.cfg
+	cp boot/limine.cfg $(ISO_ROOT)/boot/limine/limine.cfg
 	cp $(KERNEL) $(ISO_ROOT)/boot/atomical.elf
 	cp $(LIMINE_DIR)/limine-bios.sys $(ISO_ROOT)/boot/limine/
 	cp $(LIMINE_DIR)/limine-bios-cd.bin $(ISO_ROOT)/boot/limine/
