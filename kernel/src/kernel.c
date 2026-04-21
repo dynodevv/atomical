@@ -51,16 +51,16 @@ static void fill_rect(int x, int y, int w, int h, uint32_t c) {
 }
 
 static uint32_t blend(uint32_t fg, uint32_t bg, uint8_t a) {
-    uint8_t fr = (fg >> 16) & 0xff;
-    uint8_t fg_g = (fg >> 8) & 0xff;
-    uint8_t fb = fg & 0xff;
-    uint8_t br = (bg >> 16) & 0xff;
-    uint8_t bg_g = (bg >> 8) & 0xff;
-    uint8_t bb = bg & 0xff;
+    uint8_t fg_red = (fg >> 16) & 0xff;
+    uint8_t fg_green = (fg >> 8) & 0xff;
+    uint8_t fg_blue = fg & 0xff;
+    uint8_t bg_red = (bg >> 16) & 0xff;
+    uint8_t bg_green = (bg >> 8) & 0xff;
+    uint8_t bg_blue = bg & 0xff;
 
-    uint8_t r = (uint8_t)((fr * a + br * (255 - a)) / 255);
-    uint8_t g = (uint8_t)((fg_g * a + bg_g * (255 - a)) / 255);
-    uint8_t b = (uint8_t)((fb * a + bb * (255 - a)) / 255);
+    uint8_t r = (uint8_t)((fg_red * a + bg_red * (255 - a)) / 255);
+    uint8_t g = (uint8_t)((fg_green * a + bg_green * (255 - a)) / 255);
+    uint8_t b = (uint8_t)((fg_blue * a + bg_blue * (255 - a)) / 255);
     return (r << 16) | (g << 8) | b;
 }
 
