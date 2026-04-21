@@ -18,12 +18,15 @@ KERNEL_S_SRCS := $(wildcard kernel/src/*.S)
 KERNEL_OBJS := $(patsubst kernel/src/%.c,$(BUILD_DIR)/%.o,$(KERNEL_C_SRCS)) \
                $(patsubst kernel/src/%.S,$(BUILD_DIR)/%.o,$(KERNEL_S_SRCS))
 
-.PHONY: all clean run limine
+.PHONY: all clean run
 
 all: $(ISO)
 
 $(LIMINE_DIR):
 	git clone --branch=$(LIMINE_BRANCH) --depth=1 https://github.com/limine-bootloader/limine.git $(LIMINE_DIR)
+
+$(LIMINE_DIR)/limine: $(LIMINE_DIR)
+	$(MAKE) -C $(LIMINE_DIR)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -37,7 +40,7 @@ $(BUILD_DIR)/%.o: kernel/src/%.S | $(BUILD_DIR)
 $(KERNEL): $(KERNEL_OBJS)
 	$(LD) $(LDFLAGS) -o $@ $(KERNEL_OBJS)
 
-$(ISO): $(KERNEL) $(LIMINE_DIR)
+$(ISO): $(KERNEL) $(LIMINE_DIR) $(LIMINE_DIR)/limine
 	mkdir -p $(ISO_ROOT)/boot $(ISO_ROOT)/boot/limine $(ISO_ROOT)/EFI/BOOT
 	cp /home/runner/work/atomical/atomical/boot/limine.cfg $(ISO_ROOT)/boot/limine/limine.cfg
 	cp $(KERNEL) $(ISO_ROOT)/boot/atomical.elf
