@@ -12,7 +12,6 @@ struct window {
     int w;
     int h;
     uint32_t color;
-    const char *title;
 };
 
 static volatile struct limine_framebuffer_request fb_req = {
@@ -135,9 +134,9 @@ static void memcpy32(uint32_t *dst, const uint32_t *src, uint64_t count) {
 }
 
 static void draw_apps(void) {
-    struct window terminal = {.x = 60, .y = 72, .w = 520, .h = 300, .color = 0x111111, .title = "Terminal"};
-    struct window calc = {.x = 620, .y = 90, .w = 280, .h = 320, .color = 0x22262a, .title = "Calculator"};
-    struct window clock = {.x = 960, .y = 140, .w = 220, .h = 150, .color = 0x1e2632, .title = "Clock"};
+    struct window terminal = {.x = 60, .y = 72, .w = 520, .h = 300, .color = 0x111111};
+    struct window calc = {.x = 620, .y = 90, .w = 280, .h = 320, .color = 0x22262a};
+    struct window clock = {.x = 960, .y = 140, .w = 220, .h = 150, .color = 0x1e2632};
 
     draw_window(terminal);
     draw_window(calc);
