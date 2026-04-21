@@ -91,7 +91,7 @@ static void draw_window(struct window wnd) {
 
 static void draw_wallpaper(void) {
     for (uint64_t y = 0; y < fb_height; y++) {
-        uint32_t b = 60 + (uint32_t)((140 * y) / (fb_height ? fb_height : 1));
+        uint32_t b = 60 + (uint32_t)((140 * y) / fb_height);
         uint32_t c = (10 << 16) | (40 << 8) | b;
         for (uint64_t x = 0; x < fb_width; x++) {
             back[(fb_pitch / 4) * y + x] = c;
